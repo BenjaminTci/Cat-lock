@@ -8,10 +8,22 @@ Petit utilitaire Windows qui empêche le chat de faire n'importe quoi en marchan
 - Un petit bandeau en bas à droite indique quand c'est verrouillé.
 - Se lance tout seul au démarrage de Windows (désactivable via clic droit sur l'icône).
 
+## Installation
+
+Lancez **`CatLockSetup.exe`** (produit par `build.ps1` dans `bin\`) puis cliquez sur **Installer**. Pas besoin des droits administrateur :
+
+- CatLock est installé dans `%LOCALAPPDATA%\Programs\CatLock`, avec un raccourci dans le menu Démarrer (et sur le Bureau si coché).
+- Il se lance tout de suite, puis à chaque ouverture de session (option cochée par défaut).
+- Relancer l'installeur met à jour une version déjà installée.
+- Désinstallation : **Paramètres > Applications > CatLock > Désinstaller**.
+
+Installation sans fenêtre : `CatLockSetup.exe /S`. Désinstallation sans fenêtre : `CatLock.exe --uninstall --silent`.
+
+> L'exe n'est pas signé : s'il a été téléchargé, Windows SmartScreen peut afficher « Windows a protégé votre ordinateur ». Cliquez sur *Informations complémentaires* puis *Exécuter quand même*.
+
 ## Utilisation
 
-Lancez `bin\CatLock.exe` une fois : il s'inscrit au démarrage de Windows et reste dans la zone de notification.
-Clic droit sur l'icône :
+Clic droit sur l'icône du chat dans les icônes cachées de la barre des tâches :
 - *Verrouiller clavier et souris*
 - *Changer le raccourci...*
 - *Lancer au démarrage de Windows* (coché par défaut)
@@ -26,7 +38,7 @@ Clic droit sur l'icône :
 - **Par défaut** remet Alt+Shift+W.
 - Le raccourci est enregistré dans le registre (`HKCU\Software\CatLock`) et conservé au redémarrage.
 
-Le démarrage automatique passe par une **tâche planifiée** « CatLock » (déclenchée à l'ouverture de session, sans droits admin, visible dans le Planificateur de tâches). Elle pointe vers l'emplacement actuel de l'exe : si vous le déplacez, relancez-le une fois depuis son nouvel emplacement et le chemin est mis à jour automatiquement.
+Le démarrage automatique passe par une **tâche planifiée** « CatLock » (déclenchée à l'ouverture de session, sans droits admin, visible dans le Planificateur de tâches).
 
 ## Compiler
 
@@ -36,7 +48,7 @@ Aucun outil à installer : le compilateur C# du .NET Framework 4 est fourni avec
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Le script arrête CatLock s'il tourne, puis produit `bin\CatLock.exe`.
+Le script produit `bin\CatLock.exe` et l'installeur `bin\CatLockSetup.exe` (qui embarque CatLock.exe). Sources : `src\CatLock.cs` (l'application), `src\Setup.cs` (l'installeur), `src\InstallInfo.cs` (emplacements partagés).
 
 ## Bon à savoir
 

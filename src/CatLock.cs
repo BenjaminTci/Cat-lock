@@ -42,9 +42,26 @@ namespace CatLock
                 return 0;
             }
 
-            bool fromStartup = Array.IndexOf(args, "--startup") >= 0;
-
             try { SetProcessDPIAware(); } catch { }
+
+            // Utilise par l'installeur : active / desactive le lancement au demarrage.
+            if (args.Length == 2 && args[0] == "--autostart")
+            {
+                try
+                {
+                    using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\CatLock"))
+                        key.SetValue("Initialized", 1, RegistryValueKind.DWord);
+                    if (args[1] == "on") Autostart.Enable(); else Autostart.Disable();
+                    return 0;
+                }
+                catch { return 2; }
+            }
+
+            // Desinstallation (Parametres > Applications, ou "CatLock.exe --uninstall [--silent]").
+            if (args.Length >= 1 && args[0] == "--uninstall")
+                return Uninstaller.Run(Array.IndexOf(args, "--silent") >= 0);
+
+            bool fromStartup = Array.IndexOf(args, "--startup") >= 0;
 
             bool createdNew;
             using (Mutex mutex = new Mutex(true, "Local\\CatLock_SingleInstance", out createdNew))
@@ -66,6 +83,53 @@ namespace CatLock
                 Application.Run(new TrayApp(fromStartup));
                 GC.KeepAlive(mutex);
             }
+            return 0;
+        }
+    }
+
+    // ------------------------------------------------------------------------------
+    // Desinstallation : arrete CatLock, retire la tache de demarrage, les reglages, les
+    // raccourcis et l'entree "Applications", puis supprime le dossier d'installation.
+    // ------------------------------------------------------------------------------
+    static class Uninstaller
+    {
+        public static int Run(bool silent)
+        {
+            if (!silent && MessageBox.Show(
+                    "Désinstaller CatLock ?\n\nLe lancement au démarrage et les réglages (raccourci) seront supprimés.",
+                    "CatLock", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return 1;
+
+            int me = Process.GetCurrentProcess().Id;
+            foreach (Process p in Process.GetProcessesByName("CatLock"))
+            {
+                try { if (p.Id != me) { p.Kill(); p.WaitForExit(5000); } } catch { }
+            }
+
+            try { Autostart.Disable(); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\CatLock", false); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(InstallInfo.UninstallKey, false); } catch { }
+            foreach (string link in new[] { InstallInfo.StartMenuShortcut, InstallInfo.DesktopShortcut })
+            {
+                try { if (File.Exists(link)) File.Delete(link); } catch { }
+            }
+
+            // Le dossier n'est supprime que s'il s'agit bien du dossier d'installation (jamais
+            // le dossier de developpement). L'exe en cours ne peut pas s'effacer lui-meme :
+            // cmd attend quelques secondes que ce processus se termine.
+            string dir = Path.GetFullPath(Application.StartupPath).TrimEnd('\\');
+            if (string.Equals(dir, Path.GetFullPath(InstallInfo.InstallDir).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessStartInfo psi = new ProcessStartInfo("cmd.exe",
+                    "/c ping 127.0.0.1 -n 4 >nul & rmdir /s /q \"" + dir + "\"");
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                psi.WorkingDirectory = Path.GetTempPath();
+                Process.Start(psi);
+            }
+
+            if (!silent)
+                MessageBox.Show("CatLock a été désinstallé.", "CatLock", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 0;
         }
     }
